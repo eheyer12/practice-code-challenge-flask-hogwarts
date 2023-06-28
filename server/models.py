@@ -18,12 +18,18 @@ class Student(db.Model, SerializerMixin):
     age = db.Column(db.String)
 
     # Add relationship
-    
+    subject_enrollments = db.relationship('SubjectEnrollment', back_populates='student', cascade='all, delete-orphan')
+    subjects = association_proxy('subject_enrollments', 'subject', creator=lambda j: SubjectEnrollment(subject = j))
+
     # Add serialization
+    serialize_rules = ("-subject_enrollments",)
 
     # Add validation
-
-    
+    @validates('age')
+    def validates_age(self, key, value):
+        if not (11 <= value <= 18):
+            raise ValueError(f"Must have {key} between 11 and 18.")
+        return value
     
     def __repr__(self):
         return f'<Student {self.id}>'
@@ -35,9 +41,12 @@ class Subject(db.Model, SerializerMixin):
     title = db.Column(db.String)
 
     # Add relationship
-    
+    subject_enrollments = db.relationship('SubjectEnrollment', back_populates='subject', cascade='all, delete-orphan')
+    students = association_proxy('subject_enrollments', 'student', creator=lambda t: SubjectEnrollment(student = t))
+
     # Add serialization
-    
+    serialize_rules = ('-subject_enrollments',)
+
     def __repr__(self):
         return f'<Subject {self.id}>'
 
@@ -47,12 +56,23 @@ class SubjectEnrollment(db.Model, SerializerMixin):
     id = db.Column(db.Integer, primary_key=True)
     enrollment_year = db.Column(db.Integer, nullable=False)
 
+    student_id = db.Column(db.Integer, db.ForeignKey("students.id"))
+    subject_id = db.Column(db.Integer, db.ForeignKey("subjects.id"))
+
     # Add relationships
+    student  = db.relationship("Student", back_populates="subject_enrollments")
+    subject = db.relationship("Subject", back_populates='subject_enrollments')
     
     # Add serialization
-    
+    serialize_rules = ('-student', '-subject')
+
     # Add validation
-    
+    @validates('enrollment_year')
+    def validates_enrollment_year(self, key, value):
+        if not (value > 2023):
+            raise ValueError(f'Must have an {key} before 2023.')
+        return value
+
     def __repr__(self):
         return f'<SubjectEnrollment {self.id}>'
 
